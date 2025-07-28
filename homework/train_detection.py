@@ -20,7 +20,7 @@ def compute_metrics(seg_logits, seg_labels, pred_depth, gt_depth, cm: ConfusionM
     Updates ConfusionMatrix and computes depth MAE and lane-only MAE.
     """
     preds = torch.argmax(seg_logits, dim=1)
-    cm.update(preds, seg_labels)
+    cm.add(preds, seg_labels)
 
     abs_err = torch.abs(pred_depth - gt_depth)
     mae = abs_err.mean().item()
