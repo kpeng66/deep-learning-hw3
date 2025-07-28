@@ -81,43 +81,70 @@ class Detector(torch.nn.Module):
         num_classes: int = 3,
     ):
         """
-        A single model that performs segmentation and depth regression
-
-        Args:
-            in_channels: int, number of input channels
-            num_classes: int
+        A U-Net-like architecture that performs both segmentation and depth regression.
         """
         super().__init__()
 
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
 
-        # TODO: implement
-        pass
+        def conv_block(in_ch, out_ch):
+            return nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, 3, padding=1),
+                nn.ReLU(),
+                nn.BatchNorm2d(out_ch),
+                nn.Conv2d(out_ch, out_ch, 3, padding=1),
+                nn.ReLU(),
+                nn.BatchNorm2d(out_ch),
+            )
+
+        self.encoder1 = conv_block(in_channels, 32)
+        self.pool1 = nn.MaxPool2d(2)
+
+        self.encoder2 = conv_block(32, 64)
+        self.pool2 = nn.MaxPool2d(2)
+
+        self.encoder3 = conv_block(64, 128)
+        self.pool3 = nn.MaxPool2d(2)
+
+        self.bottleneck = conv_block(128, 256)
+
+        self.up3 = nn.ConvTranspose2d(256, 128, 2, stride=2)
+        self.decoder3 = conv_block(256, 128)
+
+        self.up2 = nn.ConvTranspose2d(128, 64, 2, stride=2)
+        self.decoder2 = conv_block(128, 64)
+
+        self.up1 = nn.ConvTranspose2d(64, 32, 2, stride=2)
+        self.decoder1 = conv_block(64, 32)
+
+        # Output heads
+        self.segmentation_head = nn.Conv2d(32, num_classes, kernel_size=1)
+        self.depth_head = nn.Conv2d(32, 1, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Used in training, takes an image and returns raw logits and raw depth.
-        This is what the loss functions use as input.
-
-        Args:
-            x (torch.FloatTensor): image with shape (b, 3, h, w) and vals in [0, 1]
-
-        Returns:
-            tuple of (torch.FloatTensor, torch.FloatTensor):
-                - logits (b, num_classes, h, w)
-                - depth (b, h, w)
-        """
-        # optional: normalizes the input
         z = (x - self.input_mean[None, :, None, None]) / self.input_std[
             None, :, None, None
         ]
 
-        # TODO: replace with actual forward pass
-        logits = torch.randn(x.size(0), 3, x.size(2), x.size(3))
-        raw_depth = torch.rand(x.size(0), x.size(2), x.size(3))
+        # Encoder
+        e1 = self.encoder1(z)
+        e2 = self.encoder2(self.pool1(e1))
+        e3 = self.encoder3(self.pool2(e2))
 
-        return logits, raw_depth
+        # Bottleneck
+        b = self.bottleneck(self.pool3(e3))
+
+        # Decoder
+        d3 = self.decoder3(torch.cat([self.up3(b), e3], dim=1))
+        d2 = self.decoder2(torch.cat([self.up2(d3), e2], dim=1))
+        d1 = self.decoder1(torch.cat([self.up1(d2), e1], dim=1))
+
+        # Heads
+        seg_logits = self.segmentation_head(d1)
+        depth = self.depth_head(d1).squeeze(1)  # shape: (b, h, w)
+
+        return seg_logits, depth
 
     def predict(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
