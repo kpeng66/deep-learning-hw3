@@ -9,40 +9,37 @@ INPUT_STD = [0.2064, 0.1944, 0.2252]
 
 
 class Classifier(nn.Module):
-    def __init__(
-        self,
-        in_channels: int = 3,
-        num_classes: int = 6,
-    ):
-        """
-        A convolutional network for image classification.
-
-        Args:
-            in_channels: int, number of input channels
-            num_classes: int
-        """
+    def __init__(self, in_channels=3, num_classes=6):
         super().__init__()
-
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
 
-        # TODO: implement
-        pass
+        self.conv_net = nn.Sequential(
+            nn.Conv2d(in_channels, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(32),
+            nn.MaxPool2d(2),  # 32x32
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(64),
+            nn.MaxPool2d(2),  # 16x16
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.MaxPool2d(2),  # 8x8
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1, 1)),  # 1x1
+        )
+
+        self.classifier = nn.Sequential(nn.Flatten(), nn.Linear(128, num_classes))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: tensor (b, 3, h, w) image
-
-        Returns:
-            tensor (b, num_classes) logits
-        """
-        # optional: normalizes the input
-        z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
-
-        # TODO: replace with actual forward pass
-        logits = torch.randn(x.size(0), 6)
-
+        z = (x - self.input_mean[None, :, None, None]) / self.input_std[
+            None, :, None, None
+        ]
+        features = self.conv_net(z)
+        logits = self.classifier(features)
         return logits
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
@@ -95,7 +92,9 @@ class Detector(torch.nn.Module):
                 - depth (b, h, w)
         """
         # optional: normalizes the input
-        z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
+        z = (x - self.input_mean[None, :, None, None]) / self.input_std[
+            None, :, None, None
+        ]
 
         # TODO: replace with actual forward pass
         logits = torch.randn(x.size(0), 3, x.size(2), x.size(3))
