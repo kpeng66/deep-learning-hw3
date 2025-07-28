@@ -10,8 +10,8 @@ from torch import nn
 from torch.optim import Adam
 import torch.utils.tensorboard as tb
 
-from .models import load_model, save_model, ClassificationLoss
-from .utils import load_data
+from models import load_model, save_model, ClassificationLoss
+from utils import load_data
 
 
 def train(
