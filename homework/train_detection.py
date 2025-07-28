@@ -84,7 +84,7 @@ def train(
             train_mae_list.append(mae)
             train_lane_mae_list.append(lane_mae)
 
-        train_miou = cm_train.iou().mean().item()
+        train_miou = cm_train.compute()["iou"]
         train_mae = np.mean(train_mae_list)
         train_lane_mae = np.mean(train_lane_mae_list)
 
@@ -106,7 +106,7 @@ def train(
                 val_mae_list.append(mae)
                 val_lane_mae_list.append(lane_mae)
 
-        val_miou = cm_val.iou().mean().item()
+        val_miou = cm_val.compute()["iou"]
         val_mae = np.mean(val_mae_list)
         val_lane_mae = np.mean(val_lane_mae_list)
 
