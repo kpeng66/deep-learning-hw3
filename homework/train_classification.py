@@ -44,9 +44,13 @@ def train(
     loss_fn = ClassificationLoss()
 
     train_data = load_data(
-        "classification_data/train", shuffle=True, batch_size=batch_size
+        "../classification_data/train",
+        shuffle=True,
+        batch_size=batch_size,
+        transform_pipeline="aug",
     )
-    val_data = load_data("classification_data/val", shuffle=False)
+
+    val_data = load_data("../classification_data/val", shuffle=False)
 
     global_step = 0
     metrics = {"train_acc": [], "val_acc": []}
